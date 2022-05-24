@@ -3,24 +3,28 @@ import os
 import librosa
 from sklearn.mixture import GaussianMixture
 
-train_data = []
+trained_gaussian=[]
 train_labels = []
+n_mfcc = 45
+n_components = 39
 
 path="Voice_Dataset/"
 
 for file in os.listdir(path+"train/"):
     if file.endswith(".wav"):
         y, sr = librosa.load(path + "train/" + file)
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=200)
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
         
         mfcc = np.transpose(mfcc)
 
-        for data in mfcc:
-            train_data.append(data)
-            train_labels.append(file[1])
 
-gaussian = GaussianMixture(n_components=482,random_state=3)
-gaussian = gaussian.fit(train_data)
+        gaussian = GaussianMixture(n_components=n_components, random_state=3)
+        gaussian = gaussian.fit(mfcc)
+
+        trained_gaussian.append(gaussian)
+        train_labels.append(file[1])
+
+
 
 test_data = []
 test_labels = []
@@ -30,23 +34,31 @@ predicted_labels = []
 for file in os.listdir(path+"test/"):
     if file.endswith(".wav"):
         y, sr = librosa.load(path + "test/" + file)
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=200)
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
         
         mfcc = np.transpose(mfcc)
 
-        for data in mfcc:
-            test_data.append(data)
-            test_labels.append(file[1])
         
-        prediction = gaussian.predict(test_data)
-        print(prediction)
-        count=[0]*9
-        for i in prediction:
-            count[int(train_labels[int(i)])-1] += 1
-        print(count)
-        
-        predicted_labels.append(count.index(max(count)))
         real_labels.append(file[1])
 
+        prediction=[]
+        for gaussian in trained_gaussian:
+            prediction.append(gaussian.score(mfcc))
+
+        
+        predicted_labels.append(train_labels[prediction.index(max(prediction))])
+
+print("Real labels:")
 print(real_labels)
+print("predicted labels:")
 print(predicted_labels)
+
+i=0
+count=0
+while(i < len(real_labels)):
+    if real_labels[i] == predicted_labels [i]:
+        count+=1
+    
+    i+=1
+
+print("Precision: "+str(count/len(real_labels))+"%")
